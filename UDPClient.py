@@ -1,9 +1,11 @@
 from socket import *
 serverAddress = ('localhost', 12000)
 clientSocket = socket(AF_INET, SOCK_DGRAM)
-message = input('Input lowercase sentence: ')
-messageBytes =  message.encode()
-clientSocket.sendto(messageBytes, serverAddress)
-modifiedMessage, serverAddress = clientSocket.recvfrom(2048)
-print(modifiedMessage)
+
+
+data = input('Input lowercase sentence: ')
+dataBytes =  data.encode()
+clientSocket.sendto(dataBytes, serverAddress)
+modifiedData, serverAddress = clientSocket.recvfrom(2048)
+print('From Server: ', modifiedData)
 clientSocket.close()
