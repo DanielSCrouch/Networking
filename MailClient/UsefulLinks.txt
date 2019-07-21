@@ -1,0 +1,12 @@
+SMTP Reply Codes
+https://www.greenend.org.uk/rjk/tech/smtpreplies.html
+
+Client Code Example
+https://leejef.wordpress.com/2013/11/02/net-cent-assignment-3-mail-client/
+https://stackoverflow.com/questions/49769199/python-sending-mail-via-smtp-without-using-library-must-issue-a-starttls-comma
+
+AUTH Process
+https://www.samlogic.net/articles/smtp-commands-reference-auth.htm
+
+SMTP Protocol
+https://www.ietf.org/rfc/rfc2821.txt
