@@ -2,107 +2,140 @@ from socket import *
 import base64
 import time
 import ssl
-from ssl import SSLContext
-
-### Code functional - needs cleaning 
-
 
 # Define client mail server
 mailServer = ('smtp.gmail.com', 587) #google TLS option
 username = 'duart2838@gmail.com'
 password = 'bigcat!!!'
+recipient = 'd_crouch@outlook.com'
 ### Google setup:
 ### Requires TLS (and associated port 587)
 ### Enable enabled IMAP in gmail ??? not sure if necessary
 ### Enable 'less secure app access'
 ### Check inbox for emails identifying blocked communications
 
-# Connect to mail server
-clientSocket = socket(AF_INET, SOCK_STREAM) # Setup TCP Client Socket
-clientSocket.settimeout(10)                 # Set time-out to 10 seconds
-clientSocket.connect(mailServer)            # Connect to client mail server
-recv = clientSocket.recv(1024)              # Print Response
-recv = recv.decode()
-print("Connection request response message: ", recv)
+global SOCKET
 
-# HELO command
-HELOcommand = "HELO Alice\r\n"
-clientSocket.send(HELOcommand.encode())
-recv = clientSocket.recv(1024)
-recv = recv.decode()
-print("HELO response message: ", recv)
+def send(msg):
+    """Send string message to server in bytes format"""
+    if type(msg) == str:
+        SOCKET.send(msg.encode())
+    else:
+        SOCKET.send(msg)
 
-# Initialise TLS
-command = "STARTTLS\r\n"
-clientSocket.send(command.encode())
-sock = clientSocket
-recv = clientSocket.recv(1024)
-recv = recv.decode()
-print("STARTTLS response message: ", recv)
-# Update socket (add error check)
-clientTSLSocket = ssl.wrap_socket(clientSocket, ssl_version=ssl.PROTOCOL_TLS)
+def receive():
+    """Return client server message and convert to string"""
+    recv = SOCKET.recv(1024)
+    return recv.decode()
 
-# Authorisation
-# login = "\x00"+username+"\x00"+password
+# 0) Connect to mail server
+SOCKET = socket(AF_INET, SOCK_STREAM) # Setup TCP Client Socket
+SOCKET.settimeout(10)                 # Set time-out to 10 seconds
+SOCKET.connect(mailServer)            # Connect to client mail server
+rmsg = receive()
+if rmsg[:3]=='220':
+    print('\nConnection success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
+
+# 1) HELO command
+msg = 'HELO server\r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='250':
+    print('Helo success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
+
+# 2) Initialise TLS (GMail uses requires TLS on port 587)
+msg = 'STARTTLS\r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='220':
+    print('Start TLS success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
+SOCKET = ssl.wrap_socket(SOCKET, ssl_version=ssl.PROTOCOL_TLS)
+
+# 3) Mail Server Authorisation
 login = '\x00'+username+'\x00'+password
 loginBytes = login.encode()
 loginBase64 = base64.b64encode(loginBytes)
-command = "AUTH PLAIN ".encode()+loginBase64+"\r\n".encode()
-clientTSLSocket.send(command)
-recv = clientTSLSocket.recv(1024)
-recv = recv.decode()
-print("AUTH response message: ", recv)
+msg = 'AUTH PLAIN '.encode()+loginBase64+'\r\n'.encode()
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='235':
+    print('Authorisation success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
 
-# MAIL FROM Command
-mailFrom = "MAIL FROM: <" + username + ">\r\n"
-clientTSLSocket.send(mailFrom.encode())
-recv = clientTSLSocket.recv(1024)
-recv = recv.decode()
-print("After MAIL FROM command: "+recv)
+# 4) MAIL FROM Command
+msg = 'MAIL FROM: <' + username + '>\r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='250':
+    print('Mail From success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
 
-# RCPT TO Command
-rcptTo = "RCPT TO:<d_crouch@outlook.com>\r\n"
-clientTSLSocket.send(rcptTo.encode())
-recv3 = clientTSLSocket.recv(1024)
-recv3 = recv3.decode()
-print("After RCPT TO command: "+recv3)
+# 5) RCPT TO Command
+msg = 'RCPT TO: <' + recipient + '>\r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='250':
+    print('Receipt To success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
 
-# Send DATA
-command = "DATA\r\n"
-clientTSLSocket.send(command.encode())
-recv = clientTSLSocket.recv(1024)
-recv = recv.decode()
-print("Data response message: ", recv)
+# Initialise DATA send
+msg = 'DATA \r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='354':
+    print('Data initialise success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
 
 # Send Subject
-subject = 'test subject'
-command = "SUBJECT: " + subject + "\r\n"
-clientTSLSocket.send(command.encode())
+msg = 'SUBJECT: Hello, World\r\n'
+send(msg)
 
 # Send To
-subject = 'someone'
-command = "TO: " + subject + "\r\n"
-clientTSLSocket.send(command.encode())
+msg = 'TO: ' + recipient + '\r\n'
+send(msg)
 
 # Send Body
-body = 'test body'
-command = "\r\n I love computer networks \r\n"
-clientTSLSocket.send(command.encode())
+msg = 'Tell me and I forget. Show me and I remember. Involve me and I understand.'
+msg += '\n Chinese proverb  \r\n'
+send(msg)
 
-# Send endobj
-endmsg = ".\r\n"
-command = endmsg
-clientTSLSocket.send(command.encode())
-recv = clientTSLSocket.recv(2014)
-recv = recv.decode()
-print("End response message:", recv)
+# End of data
+msg = '.\r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='250':
+    print('End data success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
 
 # Send QUIT
-quitmsg = "QUIT\r\n"
-command = quitmsg
-clientTSLSocket.send(command.encode())
-recv = clientTSLSocket.recv(2014)
-recv = recv.decode()
-print("QUIT response message:", recv)
+msg = 'QUIT\r\n'
+send(msg)
+rmsg = receive()
+if rmsg[:3]=='221':
+    print('Quit command success.')
+else:
+    print('Error')
+print('Response message: ', rmsg)
 
-clientTSLSocket.close()
+# Close socket
+SOCKET.close()
+print('Socket closed.\n')
