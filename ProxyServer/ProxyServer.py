@@ -21,7 +21,7 @@ file = open('TestFile.txt', 'rb').read()
 
 class ProxyServer:
     """Proxy Server class"""
-    def __init__(self, address='localhost', port=4002, ):
+    def __init__(self, address='localhost', port=4001):
         """Iniitialize ProxyServer class object"""
         # define public ip and port address
         # localhost for loopback to host machine
@@ -35,7 +35,7 @@ class ProxyServer:
         self.socket.bind((self.address, self.port))
         # listen for inbound communication to port
         self.socket.listen(1)
-        print('Local Server: Ready to serve...')
+        print(f'Web server listening on {self.port}. Ready to serve...\n')
         # wait for client connection
         while True:
             self.manage_connections()
@@ -46,7 +46,7 @@ class ProxyServer:
         """Process incoming connections via threading"""
         # establish the connection
         tcpCliSock, CliAddr = self.socket.accept()
-        print('Received a connection from: ', CliAddr)
+        print(f'Received a connection from: {CliAddr}\n')
         # create thread to process request
         process = threading.Thread(name=CliAddr, \
                                    target = self.request_handle, \
@@ -57,11 +57,54 @@ class ProxyServer:
         process.start()
 
     def request_handle(self, tcpCliSock, CliAddr):
-        tcpCliSock.send("HTTP/1.0 200 OK\r\n".encode())
-        tcpCliSock.send(file)
-        print('Response sent.')
-        tcpCliSock.close()
+        # receive message from client
+        message = tcpCliSock.recv(1024)
+        messageStr = message.decode("utf-8")
+        print(f"Message: \n{messageStr.split()[0]} {messageStr.split()[1]}\n")
+        # identify file requested (assumes message is get request)
+        filename = messageStr.split()[1]
+        print('filename: ', filename)
+        try:
+            # try to retrieve data from cache
+            dataBytes = self.retrieve_from_cache(filename)
+            # send HTTP header
+            tcpCliSock.send('\nHTTP/1.1 200 OK\n\n'.encode())
+            # send file to client
+            tcpCliSock.send(dataBytes)
+            print(f"Data sent from cache")
+        except OSError as e:
+            print(f"Cache error: {e}")
+            try:
+                # try to retrieve data from website
+                dataBytes = self.retrieve_from_external(filename)
+            except:
+                # send response header for file not found
+                connectionSocket.send('\nHTTP/1.1 404 Not Found\n\n'.encode())
+                connectionSocket.send('\nHTTP/1.1 404 Not Found\n\n'.encode())
 
+        # close connection with client
+        tcpCliSock.close()
+        print(f"Connect on closed with client {CliAddr}.")
+
+    def retrieve_from_cache(self, filename):
+        try:
+            # try to find file in cache
+            f = open(f"./{filename}")
+            data = f.read()
+            dataBytes = data.encode()
+            return dataBytes
+        except Exception as e:
+            raise OSError('File not found.')
+
+    def retrieve_from_external(self, filename):
+        try:
+            # try to find file in cache
+            f = open(f"./{filename[1:]}")
+            data = f.read()
+            dataBytes = data.encode()
+            return dataBytes
+        except Exception as e:
+            raise OSError('File not found.')
 
 
 #     message = serverSocket.recv(1024)
