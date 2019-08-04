@@ -16,4 +16,5 @@ while True:
     serverData = clientSocket.recv(1024)
     if len(serverData) > 0:
         print('From Server:\n\n', serverData.decode('utf-8')[:])
-# clientSocket.close()
+
+clientSocket.close()
